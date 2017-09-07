@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<package>
+  <name>move_group_online_collision_predictor</name>
+  <version>0.0.0</version>
+  <description>
+    MoveGroupCapability that does simple extrapolation to check for possible collisions.
+
+	 If it detects a possible collision at a specified horizon, it notifies the ecosystem by message.
+  </description>
+
+  <maintainer email="me@v4hn.de">Michael v4hn Goerner</maintainer>
+  <license>BSD</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>moveit_core</build_depend>
+  <build_depend>moveit_ros_move_group</build_depend>
+  <build_depend>pluginlib</build_depend>
+  <build_depend>std_msgs</build_depend>
+
+  <run_depend>moveit_core</run_depend>
+  <run_depend>moveit_ros_move_group</run_depend>
+  <run_depend>pluginlib</run_depend>
+  <run_depend>std_msgs</run_depend>
+
+
+  <!-- The export tag contains other, unspecified, tags -->
+  <export>
+    <moveit_ros_move_group plugin="${prefix}/move_group_online_collision_predictor_plugin_description.xml"/>
+  </export>
+</package>

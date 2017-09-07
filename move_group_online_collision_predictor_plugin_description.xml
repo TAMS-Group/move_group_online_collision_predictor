@@ -1,0 +1,6 @@
+<library path="libmove_group_online_collision_predictor">
+  <class name="move_group/OnlineCollisionPredictor" type="move_group::OnlineCollisionPredictor" base_class_type="move_group::MoveGroupCapability">
+    <description>
+    </description>
+  </class>
+</library>
