@@ -41,7 +41,7 @@
 #include <moveit/robot_state/robot_state.h>
 
 #include <std_msgs/Bool.h>
-
+#include <string>
 #include <thread>
 
 namespace move_group {
@@ -55,6 +55,7 @@ public:
 
 private:
   ros::Publisher pub_;
+  ros::Publisher planning_scene_publisher_;
   double rate_;
   double horizon_;
 
@@ -75,6 +76,8 @@ void move_group::OnlineCollisionPredictor::initialize() {
   rate_ = node_handle_.param<double>("online_collision_checker/rate", 2);
   // extrapolate this far into the future (single-step extrapolation)
   horizon_ = node_handle_.param<double>("online_collision_checker/horizon", .5);
+  ROS_INFO_NAMED("CollisionPredictor", "Horizon is '%lf' seconds", horizon_);
+  std::string planning_scene_topic = node_handle_.param<std::string>("online_collision_checker/ps_topic", "online_collision_checker/planning_scene");
   pub_ = root_node_handle_.advertise<std_msgs::Bool>(
       "online_collision_prediction", 1, true);
   { // publish initial msg on latched topic
@@ -82,6 +85,9 @@ void move_group::OnlineCollisionPredictor::initialize() {
     msg.data= colliding_;
     pub_.publish(msg);
   }
+  planning_scene_publisher_ = root_node_handle_.advertise<moveit_msgs::PlanningScene>(planning_scene_topic, 100, false);
+  ROS_INFO_NAMED("CollisionPredictor", "Publishing maintained planning scene on '%s'", planning_scene_topic.c_str());
+  
   checker_thread_ = std::thread(std::bind(
       &move_group::OnlineCollisionPredictor::continuous_predict, this));
 }
@@ -115,6 +121,11 @@ void move_group::OnlineCollisionPredictor::continuous_predict() {
 
         // force update after changing internal variables
         predicted_state.update(true);
+
+        // publish the predicted planning scene if requested
+        moveit_msgs::PlanningScene ps_msg;
+        prediction->getPlanningSceneMsg(ps_msg);
+        planning_scene_publisher_.publish(ps_msg);
 
         // topic is latched, so publish only on change
         if (prediction->isStateColliding() != colliding_) {
