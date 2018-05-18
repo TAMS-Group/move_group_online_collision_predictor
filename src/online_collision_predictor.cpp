@@ -87,7 +87,9 @@ void move_group::OnlineCollisionPredictor::continuous_predict() {
   ros::Rate rate(rate_);
 
   while (ros::ok()) {
-    { // lock planning scene only for prediction
+    // force update to latest received joint state
+    context_->planning_scene_monitor_->updateSceneWithCurrentState();
+    { // lock planning scene for prediction only
       planning_scene_monitor::LockedPlanningSceneRO ps(
           context_->planning_scene_monitor_);
       planning_scene::PlanningScenePtr prediction(ps->diff());
