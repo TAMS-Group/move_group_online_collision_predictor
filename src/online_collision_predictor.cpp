@@ -98,6 +98,9 @@ void move_group::OnlineCollisionPredictor::continuous_predict() {
       double *velocities = predicted_state.getVariableVelocities();
       for (int i = 0; i < predicted_state.getVariableCount(); ++i)
         positions[i] += horizon_ * velocities[i];
+
+      predicted_state.enforceBounds();
+
       // force update after changing internal variables
       predicted_state.update(true);
 
