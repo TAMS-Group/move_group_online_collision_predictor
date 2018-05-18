@@ -75,8 +75,8 @@ void move_group::OnlineCollisionPredictor::initialize() {
   pub_ = root_node_handle_.advertise<std_msgs::Bool>(
       "online_collision_prediction", 1, true);
   { // publish initial msg on latched topic
-	 std_msgs::Bool msg;
-	 msg.data= colliding_;
+    std_msgs::Bool msg;
+    msg.data= colliding_;
     pub_.publish(msg);
   }
   checker_thread_ = std::thread(std::bind(
@@ -101,7 +101,7 @@ void move_group::OnlineCollisionPredictor::continuous_predict() {
       // force update after changing internal variables
       predicted_state.update(true);
 
-		// topic is latched, so publish only on change
+      // topic is latched, so publish only on change
       if (prediction->isStateColliding() != colliding_) {
         std_msgs::Bool msg;
         msg.data = !colliding_;
