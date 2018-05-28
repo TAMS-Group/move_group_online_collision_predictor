@@ -68,6 +68,9 @@ move_group::OnlineCollisionPredictor::OnlineCollisionPredictor()
     : MoveGroupCapability("OnlineCollisionPredictor"), colliding_(false) {}
 
 void move_group::OnlineCollisionPredictor::initialize() {
+  // velocities have to be copied to the current state for this plugin
+  context_->planning_scene_monitor_->getStateMonitorNonConst()->enableCopyDynamics(true);
+
   // maximum rate for collision checks
   rate_ = node_handle_.param<double>("online_collision_checker/rate", 2);
   // extrapolate this far into the future (single-step extrapolation)
