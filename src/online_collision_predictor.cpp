@@ -55,39 +55,49 @@ public:
 
 private:
   ros::Publisher pub_;
-  ros::Publisher planning_scene_publisher_;
   double rate_;
   double horizon_;
 
   bool colliding_;
+
+  bool debug_;
+  ros::Publisher debug_ps_publisher_;
 
   std::thread checker_thread_;
 };
 }
 
 move_group::OnlineCollisionPredictor::OnlineCollisionPredictor()
-    : MoveGroupCapability("OnlineCollisionPredictor"), colliding_(false) {}
+    : MoveGroupCapability("OnlineCollisionPredictor"), colliding_(false), debug_(false) {}
 
 void move_group::OnlineCollisionPredictor::initialize() {
-  // velocities have to be copied to the current state for this plugin
+  // velocities have to be copied to the monitored state for this plugin
   context_->planning_scene_monitor_->getStateMonitorNonConst()->enableCopyDynamics(true);
 
   // maximum rate for collision checks
-  rate_ = node_handle_.param<double>("online_collision_checker/rate", 2);
+  rate_ = node_handle_.param<double>("online_collision_predictor/rate", 2);
   // extrapolate this far into the future (single-step extrapolation)
-  horizon_ = node_handle_.param<double>("online_collision_checker/horizon", .5);
-  ROS_INFO_NAMED("CollisionPredictor", "Horizon is '%lf' seconds", horizon_);
-  std::string planning_scene_topic = node_handle_.param<std::string>("online_collision_checker/ps_topic", "online_collision_checker/planning_scene");
-  pub_ = root_node_handle_.advertise<std_msgs::Bool>(
-      "online_collision_prediction", 1, true);
-  { // publish initial msg on latched topic
+  horizon_ = node_handle_.param<double>("online_collision_predictor/horizon", .5);
+
+  debug_ = node_handle_.param<bool>("online_collision_predictor/debug", false);
+
+  if(debug_){
+    ROS_INFO_STREAM_NAMED("online_collision_predictor", "Prediction computes at " << rate_ << "hz");
+    ROS_INFO_STREAM_NAMED("online_collision_predictor", "Prediction horizon is " << horizon_ << " seconds");
+
+    const std::string SCENE_TOPIC("predicted_scene");
+    debug_ps_publisher_ = node_handle_.advertise<moveit_msgs::PlanningScene>(SCENE_TOPIC, 100, false);
+    ROS_INFO_STREAM_NAMED("online_collision_predictor", "Publishing predicted planning scene on " << node_handle_.getNamespace() << "/" << SCENE_TOPIC);
+  }
+
+  pub_ = root_node_handle_.advertise<std_msgs::Bool>("online_collision_prediction", 1, true);
+  {
+    // publish initial msg on latched topic
     std_msgs::Bool msg;
     msg.data= colliding_;
     pub_.publish(msg);
   }
-  planning_scene_publisher_ = root_node_handle_.advertise<moveit_msgs::PlanningScene>(planning_scene_topic, 100, false);
-  ROS_INFO_NAMED("CollisionPredictor", "Publishing maintained planning scene on '%s'", planning_scene_topic.c_str());
-  
+
   checker_thread_ = std::thread(std::bind(
       &move_group::OnlineCollisionPredictor::continuous_predict, this));
 }
@@ -98,6 +108,7 @@ void move_group::OnlineCollisionPredictor::continuous_predict() {
   while (ros::ok()) {
     // force update to latest received joint state
     context_->planning_scene_monitor_->updateSceneWithCurrentState();
+
     { // lock planning scene for prediction only
       planning_scene_monitor::LockedPlanningSceneRO ps(
           context_->planning_scene_monitor_);
@@ -106,7 +117,7 @@ void move_group::OnlineCollisionPredictor::continuous_predict() {
           prediction->getCurrentStateNonConst();
 
       if(!ps->getCurrentState().hasVelocities()){
-        ROS_ERROR_THROTTLE_NAMED(5.0, "online_collision_prediction",
+        ROS_ERROR_THROTTLE_NAMED(5.0, "online_collision_predictor",
           "current monitored state has no velocities. "
           "move_group/OnlineCollisionPredictor does not work.");
       }
@@ -122,10 +133,12 @@ void move_group::OnlineCollisionPredictor::continuous_predict() {
         // force update after changing internal variables
         predicted_state.update(true);
 
-        // publish the predicted planning scene if requested
-        moveit_msgs::PlanningScene ps_msg;
-        prediction->getPlanningSceneMsg(ps_msg);
-        planning_scene_publisher_.publish(ps_msg);
+        if(debug_){
+          // publish the predicted planning scene if requested
+          moveit_msgs::PlanningScene ps_msg;
+          prediction->getPlanningSceneMsg(ps_msg);
+          debug_ps_publisher_.publish(ps_msg);
+        }
 
         // topic is latched, so publish only on change
         if (prediction->isStateColliding() != colliding_) {
