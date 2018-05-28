@@ -99,22 +99,30 @@ void move_group::OnlineCollisionPredictor::continuous_predict() {
       robot_state::RobotState &predicted_state =
           prediction->getCurrentStateNonConst();
 
-      double *positions = predicted_state.getVariablePositions();
-      double *velocities = predicted_state.getVariableVelocities();
-      for (int i = 0; i < predicted_state.getVariableCount(); ++i)
-        positions[i] += horizon_ * velocities[i];
+      if(!ps->getCurrentState().hasVelocities()){
+        ROS_ERROR_THROTTLE_NAMED(5.0, "online_collision_prediction",
+          "current monitored state has no velocities. "
+          "move_group/OnlineCollisionPredictor does not work.");
+      }
+      else {
+        double *positions = predicted_state.getVariablePositions();
+        double *velocities = predicted_state.getVariableVelocities();
 
-      predicted_state.enforceBounds();
+        for (int i = 0; i < predicted_state.getVariableCount(); ++i)
+          positions[i] += horizon_ * velocities[i];
 
-      // force update after changing internal variables
-      predicted_state.update(true);
+        predicted_state.enforceBounds();
 
-      // topic is latched, so publish only on change
-      if (prediction->isStateColliding() != colliding_) {
-        std_msgs::Bool msg;
-        msg.data = !colliding_;
-        pub_.publish(msg);
-        colliding_ = !colliding_;
+        // force update after changing internal variables
+        predicted_state.update(true);
+
+        // topic is latched, so publish only on change
+        if (prediction->isStateColliding() != colliding_) {
+          std_msgs::Bool msg;
+          msg.data = !colliding_;
+          pub_.publish(msg);
+          colliding_ = !colliding_;
+        }
       }
     }
 
