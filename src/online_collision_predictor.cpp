@@ -85,7 +85,7 @@ void move_group::OnlineCollisionPredictor::initialize() {
     ROS_INFO_STREAM_NAMED("online_collision_predictor", "Prediction computes at " << rate_ << "hz");
     ROS_INFO_STREAM_NAMED("online_collision_predictor", "Prediction horizon is " << horizon_ << " seconds");
 
-    const std::string SCENE_TOPIC("predicted_scene");
+    const std::string SCENE_TOPIC("online_collision_predictor/predicted_scene");
     debug_ps_publisher_ = node_handle_.advertise<moveit_msgs::PlanningScene>(SCENE_TOPIC, 100, false);
     ROS_INFO_STREAM_NAMED("online_collision_predictor", "Publishing predicted planning scene on " << node_handle_.getNamespace() << "/" << SCENE_TOPIC);
   }
@@ -118,7 +118,7 @@ void move_group::OnlineCollisionPredictor::continuous_predict() {
 
       if(!ps->getCurrentState().hasVelocities()){
         ROS_ERROR_THROTTLE_NAMED(5.0, "online_collision_predictor",
-          "current monitored state has no velocities. "
+          "Current monitored state has no velocities. "
           "move_group/OnlineCollisionPredictor does not work.");
       }
       else {
