@@ -105,6 +105,19 @@ void move_group::OnlineCollisionPredictor::initialize() {
 void move_group::OnlineCollisionPredictor::continuous_predict() {
   ros::Rate rate(rate_);
 
+  {
+    int wait_for_setup = static_cast<int>(10.0/rate_);
+    while (ros::ok() &&
+           wait_for_setup-- > 0 &&
+           !context_->planning_scene_monitor_->getStateMonitorNonConst()->haveCompleteState()) {
+      rate.sleep();
+    }
+    if (wait_for_setup == 0){
+      ROS_WARN_NAMED("online_collision_predictor",
+                     "Full robot state is not available (yet?). Collision prediction will not work until it is.");
+    }
+  }
+
   while (ros::ok()) {
     // force update to latest received joint state
     context_->planning_scene_monitor_->updateSceneWithCurrentState();
