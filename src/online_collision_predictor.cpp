@@ -129,7 +129,8 @@ void move_group::OnlineCollisionPredictor::continuous_predict() {
       robot_state::RobotState &predicted_state =
           prediction->getCurrentStateNonConst();
 
-      if(!ps->getCurrentState().hasVelocities()){
+      if (!predicted_state.hasVelocities())
+      {
         ROS_ERROR_THROTTLE_NAMED(5.0, "online_collision_predictor",
           "Current monitored state has no velocities. "
           "move_group/OnlineCollisionPredictor does not work.");
@@ -155,10 +156,10 @@ void move_group::OnlineCollisionPredictor::continuous_predict() {
 
         // topic is latched, so publish only on change
         if (prediction->isStateColliding() != colliding_) {
-          std_msgs::Bool msg;
-          msg.data = !colliding_;
-          pub_.publish(msg);
           colliding_ = !colliding_;
+          std_msgs::Bool msg;
+          msg.data = colliding_;
+          pub_.publish(msg);
         }
       }
     }
