@@ -61,6 +61,7 @@ private:
   double horizon_;
 
   bool colliding_;
+  std::string move_group_name_;
 
   bool debug_;
   ros::Publisher debug_ps_publisher_;
@@ -78,6 +79,7 @@ void move_group::OnlineCollisionPredictor::initialize() {
   // velocities have to be copied to the monitored state for this plugin
   context_->planning_scene_monitor_->getStateMonitorNonConst()->enableCopyDynamics(true);
 
+  move_group_name_ = nh.param<std::string>("move_group", "");
   // maximum rate for collision checks
   rate_ = nh.param<double>("rate", 2);
   // extrapolate this far into the future (single-step extrapolation)
@@ -86,6 +88,7 @@ void move_group::OnlineCollisionPredictor::initialize() {
   debug_ = nh.param<bool>("debug", false);
 
   if(debug_){
+    ROS_INFO_STREAM_NAMED(NAME, "Using move group: " << move_group_name_);
     ROS_INFO_STREAM_NAMED(NAME, "Prediction computes at " << rate_ << "hz");
     ROS_INFO_STREAM_NAMED(NAME, "Prediction horizon is " << horizon_ << " seconds");
 
@@ -159,7 +162,7 @@ void move_group::OnlineCollisionPredictor::continuous_predict() {
         }
 
         // topic is latched, so publish only on change
-        if (prediction->isStateColliding() != colliding_) {
+        if (prediction->isStateColliding(move_group_name_) != colliding_) {
           colliding_ = !colliding_;
           std_msgs::Bool msg;
           msg.data = colliding_;
