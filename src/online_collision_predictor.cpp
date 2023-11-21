@@ -44,6 +44,8 @@
 #include <string>
 #include <thread>
 
+static const char *NAME = "online_collision_predictor";
+
 namespace move_group {
 class OnlineCollisionPredictor : public MoveGroupCapability {
 public:
@@ -71,30 +73,32 @@ move_group::OnlineCollisionPredictor::OnlineCollisionPredictor()
     : MoveGroupCapability("OnlineCollisionPredictor"), colliding_(false), debug_(false) {}
 
 void move_group::OnlineCollisionPredictor::initialize() {
+  ros::NodeHandle nh(node_handle_, NAME);
+
   // velocities have to be copied to the monitored state for this plugin
   context_->planning_scene_monitor_->getStateMonitorNonConst()->enableCopyDynamics(true);
 
   // maximum rate for collision checks
-  rate_ = node_handle_.param<double>("online_collision_predictor/rate", 2);
+  rate_ = nh.param<double>("rate", 2);
   // extrapolate this far into the future (single-step extrapolation)
-  horizon_ = node_handle_.param<double>("online_collision_predictor/horizon", .5);
+  horizon_ = nh.param<double>("horizon", .5);
 
-  debug_ = node_handle_.param<bool>("online_collision_predictor/debug", false);
+  debug_ = nh.param<bool>("debug", false);
 
   if(debug_){
-    ROS_INFO_STREAM_NAMED("online_collision_predictor", "Prediction computes at " << rate_ << "hz");
-    ROS_INFO_STREAM_NAMED("online_collision_predictor", "Prediction horizon is " << horizon_ << " seconds");
+    ROS_INFO_STREAM_NAMED(NAME, "Prediction computes at " << rate_ << "hz");
+    ROS_INFO_STREAM_NAMED(NAME, "Prediction horizon is " << horizon_ << " seconds");
 
-    const std::string SCENE_TOPIC("online_collision_predictor/predicted_scene");
-    debug_ps_publisher_ = node_handle_.advertise<moveit_msgs::PlanningScene>(SCENE_TOPIC, 100, false);
-    ROS_INFO_STREAM_NAMED("online_collision_predictor", "Publishing predicted planning scene on " << node_handle_.getNamespace() << "/" << SCENE_TOPIC);
+    const std::string SCENE_TOPIC("predicted_scene");
+    debug_ps_publisher_ = nh.advertise<moveit_msgs::PlanningScene>(SCENE_TOPIC, 100, false);
+    ROS_INFO_STREAM_NAMED(NAME, "Publishing predicted planning scene on " << node_handle_.getNamespace() << "/" << SCENE_TOPIC);
   }
 
   pub_ = root_node_handle_.advertise<std_msgs::Bool>("online_collision_prediction", 1, true);
   {
     // publish initial msg on latched topic
     std_msgs::Bool msg;
-    msg.data= colliding_;
+    msg.data = colliding_;
     pub_.publish(msg);
   }
 
