@@ -162,7 +162,7 @@ void move_group::OnlineCollisionPredictor::continuous_predict() {
         }
 
         // topic is latched, so publish only on change
-        if (prediction->isStateColliding(move_group_name_) != colliding_) {
+        if (prediction->isStateColliding(move_group_name_, debug_) != colliding_) {
           colliding_ = !colliding_;
           std_msgs::Bool msg;
           msg.data = colliding_;
