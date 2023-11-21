@@ -11,7 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 catkin_package(
-  LIBRARIES $PROJECT_NAME}
+  LIBRARIES ${PROJECT_NAME}
   CATKIN_DEPENDS
     std_msgs
 )
