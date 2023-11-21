@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(move_group_online_collision_predictor)
 
-add_compile_options(-std=c++11)
-
 find_package(catkin REQUIRED COMPONENTS
   moveit_core
   moveit_ros_move_group
