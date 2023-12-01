@@ -44,6 +44,8 @@
 #include <string>
 #include <thread>
 
+static const char *NAME = "online_collision_predictor";
+
 namespace move_group {
 class OnlineCollisionPredictor : public MoveGroupCapability {
 public:
@@ -59,6 +61,7 @@ private:
   double horizon_;
 
   bool colliding_;
+  std::string group_name_;
 
   bool debug_;
   ros::Publisher debug_ps_publisher_;
@@ -71,30 +74,34 @@ move_group::OnlineCollisionPredictor::OnlineCollisionPredictor()
     : MoveGroupCapability("OnlineCollisionPredictor"), colliding_(false), debug_(false) {}
 
 void move_group::OnlineCollisionPredictor::initialize() {
+  ros::NodeHandle nh(node_handle_, NAME);
+
   // velocities have to be copied to the monitored state for this plugin
   context_->planning_scene_monitor_->getStateMonitorNonConst()->enableCopyDynamics(true);
 
+  group_name_ = nh.param<std::string>("group", "");
   // maximum rate for collision checks
-  rate_ = node_handle_.param<double>("online_collision_predictor/rate", 2);
+  rate_ = nh.param<double>("rate", 2);
   // extrapolate this far into the future (single-step extrapolation)
-  horizon_ = node_handle_.param<double>("online_collision_predictor/horizon", .5);
+  horizon_ = nh.param<double>("horizon", .5);
 
-  debug_ = node_handle_.param<bool>("online_collision_predictor/debug", false);
+  debug_ = nh.param<bool>("debug", false);
 
   if(debug_){
-    ROS_INFO_STREAM_NAMED("online_collision_predictor", "Prediction computes at " << rate_ << "hz");
-    ROS_INFO_STREAM_NAMED("online_collision_predictor", "Prediction horizon is " << horizon_ << " seconds");
+    ROS_INFO_STREAM_NAMED(NAME, "Using group: " << group_name_);
+    ROS_INFO_STREAM_NAMED(NAME, "Prediction computes at " << rate_ << "hz");
+    ROS_INFO_STREAM_NAMED(NAME, "Prediction horizon is " << horizon_ << " seconds");
 
-    const std::string SCENE_TOPIC("online_collision_predictor/predicted_scene");
-    debug_ps_publisher_ = node_handle_.advertise<moveit_msgs::PlanningScene>(SCENE_TOPIC, 100, false);
-    ROS_INFO_STREAM_NAMED("online_collision_predictor", "Publishing predicted planning scene on " << node_handle_.getNamespace() << "/" << SCENE_TOPIC);
+    const std::string SCENE_TOPIC("predicted_scene");
+    debug_ps_publisher_ = nh.advertise<moveit_msgs::PlanningScene>(SCENE_TOPIC, 100, false);
+    ROS_INFO_STREAM_NAMED(NAME, "Publishing predicted planning scene on " << node_handle_.getNamespace() << "/" << SCENE_TOPIC);
   }
 
   pub_ = root_node_handle_.advertise<std_msgs::Bool>("online_collision_prediction", 1, true);
   {
     // publish initial msg on latched topic
     std_msgs::Bool msg;
-    msg.data= colliding_;
+    msg.data = colliding_;
     pub_.publish(msg);
   }
 
@@ -129,7 +136,8 @@ void move_group::OnlineCollisionPredictor::continuous_predict() {
       robot_state::RobotState &predicted_state =
           prediction->getCurrentStateNonConst();
 
-      if(!ps->getCurrentState().hasVelocities()){
+      if (!predicted_state.hasVelocities())
+      {
         ROS_ERROR_THROTTLE_NAMED(5.0, "online_collision_predictor",
           "Current monitored state has no velocities. "
           "move_group/OnlineCollisionPredictor does not work.");
@@ -154,11 +162,12 @@ void move_group::OnlineCollisionPredictor::continuous_predict() {
         }
 
         // topic is latched, so publish only on change
-        if (prediction->isStateColliding() != colliding_) {
-          std_msgs::Bool msg;
-          msg.data = !colliding_;
-          pub_.publish(msg);
+        if (prediction->isStateColliding(group_name_, debug_) != colliding_)
+        {
           colliding_ = !colliding_;
+          std_msgs::Bool msg;
+          msg.data = colliding_;
+          pub_.publish(msg);
         }
       }
     }
