@@ -138,8 +138,8 @@ void move_group::OnlineCollisionPredictor::continuous_predict() {
 
       if (!predicted_state.hasVelocities())
       {
-        ROS_ERROR_THROTTLE_NAMED(5.0, "online_collision_predictor",
-          "Current monitored state has no velocities. "
+        ROS_ERROR_ONCE_NAMED("online_collision_predictor",
+          "Monitored states have no velocities. "
           "move_group/OnlineCollisionPredictor does not work.");
       }
       else {
